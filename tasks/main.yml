@@ -1,0 +1,61 @@
+---
+- name: sample
+  hosts: localhost
+  vars_files:
+    /home/nani/Desktop/sample/vars/main.yml
+  tasks:
+  - name: VPC-CREATION
+    ec2_vpc_net:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      region: us-east-1
+      cidr_block: 10.0.0.0/16
+      name: fresco-vpc
+    register: vpcdata
+  - set_fact:
+      vpc_id: "{{ vpcdata.vpc.id }}"
+  - debug: var=vpc_id
+  - name: SUBNET-CREATION
+    ec2_vpc_subnet:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      vpc_id: "{{ vpc_id }}"
+      region: us-east-1
+      az: us-east-1c
+      state: present
+      cidr: 10.0.0.0/24
+      tags:
+        Name: fresco_subnet
+    register: subnetdata
+  - set_fact:
+      subnet_id: "{{ subnetdata.subnet.id }}"
+  - debug: var=subnet_id
+
+  - name: IGW-CREATION
+    ec2_vpc_igw:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      vpc_id: "{{ vpc_id }}"
+      state: present
+      region: us-east-1
+    register: igwdata
+  - set_fact:
+      gateway_id: "{{ igwdata.gateway_id }}"
+  - debug: var=gateway_id
+  - name: ROUTING-TABLE-CREATION
+    ec2_vpc_route_table:
+      aws_access_key: "{{ aws_access_key }}"
+      aws_secret_key: "{{ aws_secret_key }}"
+      vpc_id: "{{ vpc_id }}"
+      region: us-east-1
+      tags:
+        Name: fresco_route
+      subnets:
+      - "{{ subnet_id }}"
+      routes:
+      - dest: 0.0.0.0/0
+        gateway_id: "{{ gateway_id }}"
+    register: rtbdata
+  - set_fact:
+      route_table_id: "{{ rtbdata.route_table.route_table_id }}"
+  - debug: var=route_table_id  
